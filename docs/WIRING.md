@@ -76,7 +76,9 @@ R3 limits current; it is **not** a voltage translator, clamp, or galvanic
 isolator. The OEM controller's TX must not remain connected in parallel with
 the ESP output. The component expects to be the only transmitter driving ERV
 RX. The standard ESPHome UART keeps TX assigned to the UART, idling low under
-inversion. This ESPHome implementation has not yet been hardware-tested.
+inversion. Initial ESPHome polling and status readback have now been verified
+on the same ESP32-S3/interface. Control writes and long-term reliability under
+ESPHome remain to be tested.
 
 This is positive-voltage, inverted UART signaling, not evidence of RS-232
 voltage levels or RS-485 differential signaling. Do not substitute those

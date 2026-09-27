@@ -5,9 +5,11 @@ ERV's wall-controller UART. It exposes ventilation controls and measured status
 to Home Assistant through ESPHome's native API. It is not a cloud integration.
 
 The protocol was recovered from this model's original controller and tested in
-a standalone ESP32 replay application. The ESPHome component has been compiled
-and tested offline; **it has not yet been installed or hardware-tested under
-ESPHome**. See [validation](docs/VALIDATION.md) for the exact evidence and limits.
+a standalone ESP32 replay application. The ESPHome component has now also been
+installed on the ESP32-S3: boot, Wi-Fi migration, native API, adoption discovery
+and live ERV polling/readback were verified. ESPHome actuation and long-running
+reliability still need validation. See [validation](docs/VALIDATION.md) for the
+exact evidence and limits.
 
 ## What it provides
 

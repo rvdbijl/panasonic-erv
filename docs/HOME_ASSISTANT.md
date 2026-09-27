@@ -1,8 +1,9 @@
 # Home Assistant usage
 
-This page describes a **future installation**. Building this repository does
-not add a device to Home Assistant, change an ESPHome dashboard, or flash an ESP.
-The ESPHome port still needs its first hardware validation.
+Building this repository does not add a device to Home Assistant, change an
+ESPHome dashboard, or flash an ESP. An initial hardware deployment has verified
+ESPHome polling/readback and adoption discovery; each installation still needs
+commissioning before enabling automatic control.
 
 ## Connecting and commissioning
 

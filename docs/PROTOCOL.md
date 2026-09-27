@@ -107,7 +107,8 @@ The second save and restoration used write byte 52 = 1. The first used 0. This
 component uses the captured final-save form with 1, verified in golden-frame
 tests; it does not claim to understand every commissioning flag. The earlier
 replay application exposed this save form for user testing, and the user reported
-that basic control worked well. The ESPHome implementation itself is unflashed.
+that basic control worked well. Initial ESPHome polling/readback has also been
+verified on hardware; ESPHome control writes remain to be tested.
 
 ## Preserving known state and refusing unknown profiles
 
@@ -140,8 +141,8 @@ error; it does not supply this UART command map.
 
 ## Work still needed
 
-- First hardware validation of this ESPHome port, including startup, long-running
-  operation and loss/recovery cases.
+- ESPHome control-write validation, long-running operation and loss/recovery
+  cases beyond the successful initial boot and polling/readback test.
 - Exact semantics of remaining configuration bytes and broader profile support.
 - Signed/below-zero °F temperatures, Celsius-mode bytes, other sentinels and
   sensor-failure behavior.
