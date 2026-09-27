@@ -6,16 +6,25 @@
 
 namespace esphome {
 namespace panasonic_erv {
+// Wire-format helpers have no ESPHome dependency, so captured frames can be
+// checked on a host PC. Offsets below are zero-based from the A5 A5 5A 5A header;
+// docs/PROTOCOL.md records which fields are confirmed and which remain unknown.
 namespace protocol {
+// Captured 12-byte status request, including its checksum. This is specific to
+// the FV-16VEC1S frame family; similar Panasonic models may use different frames.
 static constexpr uint8_t POLL[] = {0xA5, 0xA5, 0x5A, 0x5A, 0xBA, 0xC0, 0x01, 0x0B, 0, 0, 1, 0};
 inline uint16_t le16(const uint8_t* p) { return p[0] | (uint16_t(p[1]) << 8); }
 inline bool sync(const uint8_t* p, size_t n) { return n >= 4 && memcmp(p, POLL, 4) == 0; }
+// Bytes 8..9 count bytes beyond the fixed 12-byte frame prefix. Zero means
+// the prefix alone (as in POLL); a return value of zero means no usable prefix.
 inline size_t expected(const uint8_t* p, size_t n) {
   return sync(p, n) && n >= 12 ? 12u + le16(p + 8) : 0;
 }
 // Matches captured polls, status replies and 59-byte OEM control/config writes.
 // Applying this formula to other message families remains a hypothesis.
 inline uint16_t checksumHypothesis(const uint8_t* p, size_t n) {
+  // Exclude sync/checksum bytes 0..5. uint16_t accumulation implements the
+  // observed modulo-65536 sum; valid() compares it with little-endian bytes 4..5.
   uint16_t sum = 0xC0AD;
   for (size_t i = 6; i < n; ++i)
     sum += p[i];
@@ -35,10 +44,14 @@ struct Status {
   uint8_t control[3];       // frame 12..14: power, mode (unknown), Low/High
   uint8_t fault[3];         // frame 57..59; F01 = communication error (user confirmed)
 };
+// Only a complete, checksum-valid 73-byte status is decoded. Build into a
+// temporary so rejection leaves the caller's previous Status untouched.
 inline bool decodeStatus(const uint8_t* p, size_t n, Status& out) {
   if (n != 73 || !valid(p, n) || p[6] != 0x03 || p[7] != 0x0B)
     return false;
   Status decoded = {};
+  // Reverse each wire pair once, at the decoding boundary: the ERV sends
+  // EA then SA, while all public arrays and preset APIs use SA then EA.
   for (size_t i = 0; i < 2; ++i) {
     decoded.live[i] = le16(p + 22 + 2 * (1 - i));
     decoded.boost[i] = le16(p + 26 + 2 * (1 - i));
@@ -59,9 +72,13 @@ inline bool decodeStatus(const uint8_t* p, size_t n, Status& out) {
 // Standby sentinel; larger values may encode negatives or errors, so suppress.
 inline float temperatureC(uint8_t raw) { return raw >= 127 ? NAN : (raw - 32.0f) * 5.0f / 9.0f; }
 inline bool commsFault(const Status& status) { return memcmp(status.fault, "F01", 3) == 0; }
+// The observed no-fault value is three zero bytes, not the ASCII string "000".
+// An unknown nonzero code must remain visible rather than being treated as OK.
 inline bool blankFault(const Status& status) {
   return status.fault[0] == 0 && status.fault[1] == 0 && status.fault[2] == 0;
 }
+// Batch-capture helper retained for callers that already have an entire burst.
+// The live Controller instead uses the incremental FrameParser in controller.h.
 struct ScanCounts {
   size_t accepted = 0, rejected = 0, noise = 0;
 };

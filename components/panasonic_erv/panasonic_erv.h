@@ -13,6 +13,8 @@
 namespace esphome {
 namespace panasonic_erv {
 class PanasonicERV;
+// Thin ESPHome entity adapters submit requests to the hub. Only the hub's
+// status callback publishes accepted state; these controls are not optimistic.
 class ModeSelect : public select::Select {
 public:
   void set_parent(PanasonicERV* p) { parent_ = p; }
@@ -41,12 +43,16 @@ protected:
   PanasonicERV* parent_{};
   bool boost_{};
 };
+// Integration boundary: owns the pure Controller, borrows UART/GPIO/entity
+// objects registered by ESPHome, and translates status/results into entities.
 class PanasonicERV : public Component, public uart::UARTDevice, public Listener {
 public:
   PanasonicERV() : controller_(this) {}
   void setup() override;
   void loop() override;
   void dump_config() override;
+  // DATA runs after UART hardware setup, allowing our RX pull mode to be
+  // applied without reinitializing pin routing or inversion.
   float get_setup_priority() const override { return setup_priority::DATA; }
   void set_poll_interval(uint32_t ms) { controller_.set_poll_interval(ms); }
   void set_status_timeout(uint32_t ms) { controller_.set_status_timeout(ms); }
@@ -60,6 +66,8 @@ public:
   void set_mode_select(ModeSelect* s) { mode_ = s; }
   void set_preset_number(uint8_t index, PresetNumber* n) { numbers_[index] = n; }
   void set_switch(uint8_t index, ERVSwitch* s) { switches_[index] = s; }
+  // Submission APIs return queue admission, not eventual ERV confirmation.
+  // Individual preset fields follow PRESETS order from __init__.py.
   bool request(replay::Action action);
   bool request_field(uint8_t field, float value);
   bool set_presets(float low_sa, float low_ea, float high_sa, float high_ea, float boost_sa,
@@ -79,6 +87,12 @@ protected:
   protocol::Status last_status_{};
   uint8_t last_boost_{};
   uint32_t last_diagnostics_{};
+  // Index contracts with the Python platform modules; keep both sides aligned.
+  // sensors: SA flow, EA flow, indoor/outdoor temp, indoor/outdoor RH, watts,
+  //          valid status frames, parser rejections.
+  // binary: connected, fault, control_ready; text: fault_code, command_result.
+  // numbers: Low SA/EA, High SA/EA, Boost SA/EA; switches: power, boost.
+  // Null entries mean the corresponding optional entity was not configured.
   std::array<sensor::Sensor*, 9> sensors_{};
   std::array<binary_sensor::BinarySensor*, 3> binary_{};
   std::array<text_sensor::TextSensor*, 2> text_{};
@@ -87,6 +101,8 @@ protected:
   ModeSelect* mode_{};
 };
 
+// Evaluate YAML literals/lambdas at action execution, then submit one atomic
+// preset request. The synchronous action returns without waiting for readback.
 template <typename... Ts> class SetPresetsAction : public Action<Ts...> {
 public:
   explicit SetPresetsAction(PanasonicERV* parent) : parent_(parent) {}

@@ -23,6 +23,8 @@ CONFIG_SCHEMA = cv.Schema(
 )
 
 
+# PRESETS order is shared with C++ field indexes. These expose saved targets,
+# not measured flow; the parent publishes readback after command processing.
 async def to_code(config):
     parent = await cg.get_variable(config[CONF_PARENT])
     for index, key in enumerate(PRESETS):

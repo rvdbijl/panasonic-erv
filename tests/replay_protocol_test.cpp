@@ -4,6 +4,10 @@ namespace replay = esphome::panasonic_erv::replay;
 namespace protocol = esphome::panasonic_erv::protocol;
 #include <cstdio>
 #include <cstring>
+// Golden bytes come from independent OEM captures, not from build(). Each
+// before/expected/after triple checks encoding and readback against evidence.
+// Preserve unknown bytes as captured; do not regenerate fixtures with the code
+// under test, which could make an encoder regression pass unnoticed.
 int main() {
   { // high boot=3a7019b65930d6c seq=142
     const uint8_t before[] = {165, 165, 90, 90, 5,  198, 3,  11,  61, 0,  1,  0,  1, 1,  0,

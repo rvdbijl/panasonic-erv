@@ -13,6 +13,8 @@ from esphome.const import (
 from . import CONF_PARENT, PanasonicERV
 
 DEPENDENCIES = ["panasonic_erv"]
+# Insertion order is the C++ sensors_ index contract (panasonic_erv.h).
+# Enumerate before skipping absent keys: optional entities must keep their slot.
 SENSORS = {
     "sa_flow": dict(
         unit_of_measurement="CFM",
@@ -50,6 +52,7 @@ SENSORS = {
         device_class=DEVICE_CLASS_HUMIDITY,
         state_class=STATE_CLASS_MEASUREMENT,
     ),
+    # Display-correlated watts; wider-range encoding is still provisional.
     "power": dict(
         unit_of_measurement="W",
         accuracy_decimals=0,

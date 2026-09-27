@@ -10,6 +10,9 @@ from esphome.const import (
 from . import CONF_PARENT, PanasonicERV
 
 DEPENDENCIES = ["panasonic_erv"]
+# Keep this order aligned with binary_ in C++. Connected means recent status;
+# control_ready additionally requires fresh, supported settings (not a free
+# queue slot). Fault retains its last readback during a communications outage.
 SENSORS = {
     "connected": DEVICE_CLASS_CONNECTIVITY,
     "fault": DEVICE_CLASS_PROBLEM,

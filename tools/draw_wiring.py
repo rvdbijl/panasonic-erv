@@ -18,6 +18,9 @@ svg = [
 ]
 
 
+# Drawing coordinates use a top-left origin shared with SVG. ReportLab uses
+# a bottom-left origin, so each primitive flips Y when writing the PDF. Emit
+# both formats here so circuit edits cannot silently diverge between drawings.
 def text(x, y, s, size=10, bold=False):
     c.setFont("Helvetica-Bold" if bold else "Helvetica", size)
     c.drawString(x, H - y, s)
@@ -37,6 +40,7 @@ def rect(x, y, w, h):
     svg.append(f'<rect x="{x}" y="{y}" width="{w}" height="{h}" fill="none" stroke="black"/>')
 
 
+# Dots explicitly identify electrical junctions; line crossings alone do not.
 def dot(x, y):
     c.circle(x, H - y, 2.8, fill=1, stroke=0)
     svg.append(f'<circle cx="{x}" cy="{y}" r="2.8" fill="black"/>')
@@ -79,6 +83,8 @@ for y, label in [(200, "TX"), (305, "GND"), (370, "RX"), (420, "12 V")]:
     text(99, y + 4, label, 11, True)
 for y, label in [(200, "GPIO16 / RX"), (305, "GND"), (370, "GPIO17 / TX")]:
     text(624, y + 4, label, 11, True)
+# Receive path: ERV TX -> R1 -> RX node, with R2 from that node to ground.
+# Signal labels indicate device-relative direction, not connector pin numbers.
 line(156, 200, 205, 200)
 resistor(205, 200, 305, 200)
 line(305, 200, 610, 200)
@@ -90,6 +96,8 @@ text(379, 251, "R2 4.7k", 11, True)
 line(156, 305, 610, 305)
 dot(360, 305)
 text(433, 290, "COMMON GROUND", 10, True)
+# Separate transmit path: ESP TX -> R3 -> optional JP1 -> ERV RX.
+# It must never share a driven connection with the OEM controller's TX.
 line(156, 370, 217, 370)
 rect(217, 361, 34, 18)
 text(219, 348, "JP1", 10, True)

@@ -6,6 +6,8 @@
 #include <utility>
 #include <vector>
 using namespace esphome::panasonic_erv;
+// Record transport attempts/results without ESPHome, a UART or real time.
+// Explicit timestamps let the scenarios cover expiry and uint32_t rollover.
 struct Fake : Listener {
   std::vector<std::vector<uint8_t>> tx;
   std::vector<std::pair<uint32_t, Result>> results;
@@ -29,6 +31,8 @@ Frame base() {
   return b;
 }
 void checksum(Frame& b) { replay::put16(b.data() + 4, protocol::checksumHypothesis(b.data(), 73)); }
+// Synthetic status changes get a fresh checksum so state-machine scenarios
+// exercise valid frames. Exact wire bytes are tested separately with OEM fixtures.
 void feed(Controller& c, Frame b, uint32_t t) {
   checksum(b);
   for (uint8_t byte : b)

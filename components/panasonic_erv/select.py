@@ -14,6 +14,8 @@ CONFIG_SCHEMA = cv.Schema(
 )
 
 
+# Option order must match ModeSelect::control()'s action array in C++.
+# Low/High cancel Boost; Boost retains the underlying Low/High selection.
 async def to_code(config):
     parent = await cg.get_variable(config[CONF_PARENT])
     var = await select.new_select(config["mode"], options=["Standby", "Low", "High", "Boost"])

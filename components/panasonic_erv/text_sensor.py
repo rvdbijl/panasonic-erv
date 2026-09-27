@@ -6,6 +6,8 @@ from esphome.const import ENTITY_CATEGORY_DIAGNOSTIC
 from . import CONF_PARENT, PanasonicERV
 
 DEPENDENCIES = ["panasonic_erv"]
+# C++ text_ slots: the literal ERV fault code and the latest local transaction
+# event. Command results describe queue/readback progress, not physical airflow.
 SENSORS = ("fault_code", "command_result")
 CONFIG_SCHEMA = cv.Schema(
     {

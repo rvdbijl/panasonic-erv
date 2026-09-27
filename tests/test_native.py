@@ -6,6 +6,8 @@ import pytest
 ROOT = Path(__file__).resolve().parents[1]
 
 
+# Native C++ assertions exercise the pure protocol/controller without device
+# access. Do not compile with NDEBUG: that would disable the actual assertions.
 @pytest.mark.parametrize("source", ["replay_protocol_test.cpp", "controller_test.cpp"])
 def test_native(source, tmp_path):
     binary = tmp_path / source.removesuffix(".cpp")

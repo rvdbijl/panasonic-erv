@@ -10,6 +10,9 @@ import pytest
 ROOT = Path(__file__).resolve().parents[1]
 
 
+# Use the installed ESPHome validator, not a mock of our schema. Tests patch
+# the documentation example in isolation so invalid settings cannot touch a
+# real dashboard/device or fetch a released component instead of local changes.
 def validate(tmp_path, transform=lambda s: s):
     config = (
         (ROOT / "examples/panasonic-erv.yaml")

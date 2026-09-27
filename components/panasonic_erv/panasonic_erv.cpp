@@ -6,6 +6,8 @@
 namespace esphome {
 namespace panasonic_erv {
 static const char* const TAG = "panasonic_erv";
+// YAML numbers and templated actions arrive as floats. Validate before casting
+// so fractional/NaN/out-of-range values cannot silently become integer presets.
 static bool valid_cfm(float value) {
   return std::isfinite(value) && value >= 30 && value <= 160 && std::floor(value) == value;
 }
@@ -24,8 +26,12 @@ void PanasonicERV::setup() {
     mark_failed();
     return;
   }
+  // Boot only establishes availability; it does not restore or send an ERV
+  // operating state. Controller::tick() schedules polling from loop().
   on_connection(false);
   if (text_[1])
+    // This initial message is replaced by control-request events, not by
+    // polls. Connected/control_ready are the authoritative link diagnostics.
     text_[1]->publish_state("Idle; awaiting status");
 }
 void PanasonicERV::dump_config() {
@@ -40,7 +46,9 @@ void PanasonicERV::loop() {
   size_t budget = 512;
   while (budget-- && available() && read_byte(&byte))
     controller_.ingest(byte, millis());
+  // Consume buffered readback before deciding whether to dispatch queued work.
   controller_.tick(millis());
+  // Refresh readiness even when no new frames arrive, so it can age out.
   if (uint32_t(millis() - last_diagnostics_) >= 1000) {
     last_diagnostics_ = millis();
     publish_diagnostics_();
@@ -76,12 +84,15 @@ bool PanasonicERV::set_presets(float low_sa, float low_ea, float high_sa, float 
                           {static_cast<uint16_t>(boost_sa), static_cast<uint16_t>(boost_ea)}};
   return controller_.request_presets(values, millis());
 }
+// All measurements originate from checksum-valid status. Wire Fahrenheit is
+// converted to Celsius here; invalid RH is published as NaN, not a real reading.
 void PanasonicERV::on_status(const protocol::Status& s, const uint8_t* raw) {
   last_status_ = s;
   last_boost_ = raw[41];
   have_status_ = true;
   const float indoor = protocol::temperatureC(s.indoorTemperatureF);
   const float outdoor = protocol::temperatureC(s.outdoorTemperatureF);
+  // This order must match sensor.py and the sensors_ slots in the header.
   const float values[] = {float(s.live[0]),
                           float(s.live[1]),
                           indoor,
@@ -96,6 +107,8 @@ void PanasonicERV::on_status(const protocol::Status& s, const uint8_t* raw) {
   if (binary_[1])
     binary_[1]->publish_state(fault);
   if (text_[0]) {
+    // Keep unknown/non-printable fault bytes visible. A zero-initialized
+    // fourth byte makes the three-byte wire code safe as a C string.
     char code[4] = {0};
     for (size_t i = 0; i < 3; ++i)
       code[i] = s.fault[i] >= 32 && s.fault[i] < 127 ? s.fault[i] : '?';
@@ -104,6 +117,8 @@ void PanasonicERV::on_status(const protocol::Status& s, const uint8_t* raw) {
   publish_controls_();
   publish_diagnostics_();
 }
+// Publish the last ERV readback, including after a rejected request. Unknown
+// binary flags do not invent a mode; numbers remain the reported preset values.
 void PanasonicERV::publish_controls_() {
   if (!have_status_)
     return;
@@ -124,6 +139,8 @@ void PanasonicERV::publish_controls_() {
 void PanasonicERV::on_connection(bool connected) {
   if (binary_[0])
     binary_[0]->publish_state(connected);
+  // Invalidate measured values on link loss, but retain last-known control
+  // and fault states. Automations must gate commands on the link diagnostics.
   if (!connected) {
     status_set_warning("No recent valid ERV status");
     for (size_t i = 0; i < 7; ++i)
@@ -142,6 +159,8 @@ void PanasonicERV::publish_diagnostics_() {
   if (sensors_[8])
     sensors_[8]->publish_state(controller_.rejected_frames());
 }
+// The text sensor holds only the latest event; logs emit each request ID/result.
+// A timeout can be followed by rejections of queued edits.
 void PanasonicERV::on_result(uint32_t id, Result result) {
   const char* label = "Unknown";
   switch (result) {
@@ -173,6 +192,7 @@ void PanasonicERV::on_result(uint32_t id, Result result) {
     publish_controls_();
 }
 void ModeSelect::control(size_t index) {
+  // Positional contract with select.py's option list; change them together.
   static const replay::Action actions[] = {replay::Action::STANDBY, replay::Action::SET_LOW,
                                            replay::Action::SET_HIGH, replay::Action::BOOST_ON};
   if (index < 4)

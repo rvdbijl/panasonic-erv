@@ -7,6 +7,8 @@ from . import CONF_PARENT, PanasonicERV, ns
 
 DEPENDENCIES = ["panasonic_erv"]
 ERVSwitch = ns.class_("ERVSwitch", switch.Switch)
+# A reboot must not send a remembered On/Off command. These are readback-driven
+# ERV controls, so disable restore and reject inverted switch semantics.
 SCHEMA = switch.switch_schema(
     ERVSwitch, block_inverted=True, default_restore_mode="DISABLED"
 ).extend(
@@ -27,6 +29,7 @@ CONFIG_SCHEMA = cv.Schema(
 
 async def to_code(config):
     parent = await cg.get_variable(config[CONF_PARENT])
+    # Index 0 controls ERV power; index 1 controls Boost on that same ERV.
     for index, key in enumerate(("power", "boost")):
         if key in config:
             var = await switch.new_switch(config[key])
