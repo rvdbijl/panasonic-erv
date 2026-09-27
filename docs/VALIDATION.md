@@ -44,9 +44,18 @@ The matching SVG/PDF schematic is generated from one script. The one-page,
 Letter-landscape PDF has been rendered and visually inspected for legibility,
 connection dots, signal directions, divider/ground placement and clipping.
 
-GitHub Actions is configured to repeat the test suite and both builds. See
-[actual workflow results](https://github.com/rvdbijl/panasonic-erv/actions) for
-current outcomes; a workflow definition alone is not a passing build.
+GitHub Actions passed all three jobs (tests, ESP32-S3 build and classic ESP32
+build) for release commit `223792f`:
+[release validation run](https://github.com/rvdbijl/panasonic-erv/actions/runs/36345735677).
+See [workflow results](https://github.com/rvdbijl/panasonic-erv/actions) for later
+commits. A workflow definition alone is not a passing build.
+
+The published source `github://rvdbijl/panasonic-erv@v0.1.0` was also fetched by
+ESPHome into a fresh external-component cache and compiled successfully for
+ESP32-S3. The fetched commit was
+`223792f073afb1e0a4e63023659c9136210b44d8`; every component source file matched
+the reviewed local source. This verifies GitHub discovery and the documented
+release reference as well as local-directory integration.
 
 Reproduce the checks using [CONTRIBUTING.md](../CONTRIBUTING.md). The `--remote`
 helper option tests the documented GitHub source/ref instead of the local

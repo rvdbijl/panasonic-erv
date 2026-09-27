@@ -134,7 +134,7 @@ captures, rather than relabeling those other-model commands.
 
 [Panasonic's model information](https://iaq.na.panasonic.com/erv/balanced-home-elite-plus-erv)
 identifies the FV-16VEC1S airflow range as 30–160 CFM. The
-[official wall-control manual](https://na.panasonic.ca/hubfs/PCI%20-%20Panasonic%20North%20America%20Canada/IAQ/Ventilation%20Resources%20and%20Images/ERV/English%20Resources/Installation%20Manual%20-%20ERV%20-%20Wall%20Control%20for%20BalancedHome%20Series.pdf?hsLang=en-ca)
+[official wall-control manual](https://ftp.panasonic.com/ventilationfan/erv/fv-scve2_en_install.pdf)
 describes the user controls and identifies F01 as wall-controller communication
 error; it does not supply this UART command map.
 
