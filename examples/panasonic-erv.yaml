@@ -1,0 +1,133 @@
+# Copy this file and secrets.yaml.example into your own ESPHome configuration
+# directory only when you are ready to install. This repository does not deploy it.
+substitutions:
+  device_name: panasonic-erv
+  friendly_name: Panasonic ERV
+  erv_rx_pin: GPIO16
+  erv_tx_pin: GPIO17
+
+esphome:
+  name: ${device_name}
+  friendly_name: ${friendly_name}
+  min_version: 2026.9.0
+
+esp32:
+  board: esp32-s3-devkitc-1
+  flash_size: 16MB
+  framework:
+    type: esp-idf
+
+external_components:
+  - source: github://rvdbijl/panasonic-erv@v0.1.0
+    components: [panasonic_erv]
+
+logger:
+  baud_rate: 0  # No serial log traffic on the ERV UART.
+  level: INFO
+
+api:
+  encryption:
+    key: !secret api_encryption_key
+
+ota:
+  - platform: esphome
+    password: !secret ota_password
+
+wifi:
+  ssid: !secret wifi_ssid
+  password: !secret wifi_password
+
+uart:
+  id: erv_uart
+  tx_pin:
+    number: ${erv_tx_pin}
+    inverted: true
+  rx_pin:
+    number: ${erv_rx_pin}
+    inverted: true
+  baud_rate: 4800
+  data_bits: 8
+  parity: EVEN
+  stop_bits: 1
+  rx_buffer_size: 512
+  rx_full_threshold: 1
+  rx_timeout: 3
+
+panasonic_erv:
+  id: erv
+  uart_id: erv_uart
+  poll_interval: 1s
+  status_timeout: 10s
+  command_timeout: 8s
+  rx_pull_down: true  # Matches the documented 2.2k/4.7k receive divider.
+
+select:
+  - platform: panasonic_erv
+    panasonic_erv_id: erv
+    mode:
+      name: Mode
+      id: erv_mode
+
+switch:
+  - platform: panasonic_erv
+    panasonic_erv_id: erv
+    power:
+      name: Power
+    boost:
+      name: Boost
+
+number:
+  - platform: panasonic_erv
+    panasonic_erv_id: erv
+    low_sa:
+      name: Low Supply Airflow
+    low_ea:
+      name: Low Exhaust Airflow
+    high_sa:
+      name: High Supply Airflow
+    high_ea:
+      name: High Exhaust Airflow
+    boost_sa:
+      name: Boost Supply Airflow
+    boost_ea:
+      name: Boost Exhaust Airflow
+
+sensor:
+  - platform: panasonic_erv
+    panasonic_erv_id: erv
+    sa_flow:
+      name: Supply Airflow
+    ea_flow:
+      name: Exhaust Airflow
+    indoor_temperature:
+      name: Indoor Temperature
+    outdoor_temperature:
+      name: Outdoor Temperature
+    indoor_humidity:
+      name: Indoor Humidity
+    outdoor_humidity:
+      name: Outdoor Humidity
+    power:
+      name: Power Consumption
+    valid_frames:
+      name: Valid Status Frames
+    rejected_frames:
+      name: Rejected Frames
+
+binary_sensor:
+  - platform: panasonic_erv
+    panasonic_erv_id: erv
+    connected:
+      name: ERV Connected
+    fault:
+      name: ERV Fault
+    control_ready:
+      name: ERV Control Ready
+
+text_sensor:
+  - platform: panasonic_erv
+    panasonic_erv_id: erv
+    fault_code:
+      name: ERV Fault Code
+    command_result:
+      name: ERV Command Result

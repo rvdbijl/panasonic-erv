@@ -1,0 +1,33 @@
+name: Validate external component
+on: [push, pull_request]
+permissions:
+  contents: read
+jobs:
+  tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7.0.1
+      - uses: actions/setup-python@v7.0.0
+        with:
+          python-version: '3.12'
+          cache: pip
+      - run: pip install -r requirements-dev.txt
+      - run: ruff check components tests tools
+      - run: ruff format --check components tests tools
+      - run: git ls-files '*.h' '*.cpp' -z | xargs -0 clang-format --dry-run --Werror
+      - run: pytest -q
+  compile:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        board: [s3, esp32]
+    steps:
+      - uses: actions/checkout@v7.0.1
+      - uses: actions/setup-python@v7.0.0
+        with:
+          python-version: '3.12'
+          cache: pip
+      - run: pip install -r requirements-dev.txt
+      - run: python tools/prepare_examples.py --board ${{ matrix.board }}
+      - run: esphome compile build/${{ matrix.board }}-local/test.yaml

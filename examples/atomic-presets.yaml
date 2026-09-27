@@ -1,0 +1,13 @@
+# Optional package: merges with panasonic-erv.yaml; does nothing until explicitly
+# executed. Adjust to your commissioned airflow requirements before using.
+script:
+  - id: apply_erv_presets
+    then:
+      - panasonic_erv.set_presets:
+          id: erv
+          low_sa: 30
+          low_ea: 30
+          high_sa: 60
+          high_ea: 60
+          boost_sa: 90
+          boost_ea: 90

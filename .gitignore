@@ -1,0 +1,9 @@
+.esphome/
+.pio/
+.venv/
+__pycache__/
+.pytest_cache/
+*.pyc
+secrets.yaml
+build/
+.ruff_cache/
