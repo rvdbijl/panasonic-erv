@@ -127,3 +127,31 @@ def test_two_hubs_on_separate_uarts(tmp_path):
 
     code, output = validate(tmp_path, change)
     assert code == 0, output
+
+
+def test_adoption_package_with_personal_wifi(tmp_path):
+    config = (
+        (ROOT / "examples/panasonic-erv-adopt.yaml")
+        .read_text()
+        .replace(
+            "source: github://rvdbijl/panasonic-erv@v0.1.0",
+            "source:\n      type: local\n      path: " + str(ROOT / "components"),
+        )
+    )
+    (tmp_path / "package.yaml").write_text(config)
+    (tmp_path / "test.yaml").write_text(
+        "packages:\n  erv: !include package.yaml\n"
+        "esphome:\n  name: owner-erv\n"
+        "wifi:\n  ssid: example-wifi\n  password: example-password\n"
+    )
+    result = subprocess.run(
+        [sys.executable, "-m", "esphome", "config", str(tmp_path / "test.yaml")],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert "name: owner-erv" in result.stdout
+    assert (
+        "github://rvdbijl/panasonic-erv/examples/panasonic-erv-adopt.yaml@v0.1.1" in result.stdout
+    )

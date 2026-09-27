@@ -1,0 +1,148 @@
+# ESP32-S3 adoption package; see docs/ADOPTION.md before installation.
+# Uses the v0.1.0 protocol component, with discovery and browser controls added.
+substitutions:
+  device_name: panasonic-erv
+  friendly_name: Panasonic ERV
+  erv_rx_pin: GPIO16
+  erv_tx_pin: GPIO17
+
+esphome:
+  name: ${device_name}
+  friendly_name: ${friendly_name}
+  min_version: 2026.9.0
+  project:
+    name: rvdbijl.panasonic-erv
+    version: "0.1.1"
+
+esp32:
+  board: esp32-s3-devkitc-1
+  flash_size: 16MB
+  flash_mode: dio
+  framework:
+    type: esp-idf
+
+external_components:
+  - source: github://rvdbijl/panasonic-erv@v0.1.0
+    components: [panasonic_erv]
+
+logger:
+  baud_rate: 0  # No serial log traffic on the ERV UART.
+  level: INFO
+
+# The adoption firmware has no API password/key; Device Builder can add an
+# individual encryption key when taking control. Web controls have no login.
+api:
+  reboot_timeout: 0s
+
+ota:
+  - platform: esphome
+    allow_partition_access: false
+
+# Device Builder supplies the owner's Wi-Fi configuration when adopting.
+# A provisioned device can also use credentials stored by ESPHome.
+wifi:
+  id: erv_wifi
+  reboot_timeout: 0s
+
+dashboard_import:
+  package_import_url: github://rvdbijl/panasonic-erv/examples/panasonic-erv-adopt.yaml@v0.1.1
+  import_full_config: false
+
+web_server:
+  port: 80
+  version: 3
+
+uart:
+  id: erv_uart
+  tx_pin:
+    number: ${erv_tx_pin}
+    inverted: true
+  rx_pin:
+    number: ${erv_rx_pin}
+    inverted: true
+  baud_rate: 4800
+  data_bits: 8
+  parity: EVEN
+  stop_bits: 1
+  rx_buffer_size: 512
+  rx_full_threshold: 1
+  rx_timeout: 3
+
+panasonic_erv:
+  id: erv
+  uart_id: erv_uart
+  poll_interval: 1s
+  status_timeout: 10s
+  command_timeout: 8s
+  rx_pull_down: true  # Matches the documented 2.2k/4.7k receive divider.
+
+select:
+  - platform: panasonic_erv
+    panasonic_erv_id: erv
+    mode:
+      name: Mode
+      id: erv_mode
+
+switch:
+  - platform: panasonic_erv
+    panasonic_erv_id: erv
+    power:
+      name: Power
+    boost:
+      name: Boost
+
+number:
+  - platform: panasonic_erv
+    panasonic_erv_id: erv
+    low_sa:
+      name: Low Supply Airflow
+    low_ea:
+      name: Low Exhaust Airflow
+    high_sa:
+      name: High Supply Airflow
+    high_ea:
+      name: High Exhaust Airflow
+    boost_sa:
+      name: Boost Supply Airflow
+    boost_ea:
+      name: Boost Exhaust Airflow
+
+sensor:
+  - platform: panasonic_erv
+    panasonic_erv_id: erv
+    sa_flow:
+      name: Supply Airflow
+    ea_flow:
+      name: Exhaust Airflow
+    indoor_temperature:
+      name: Indoor Temperature
+    outdoor_temperature:
+      name: Outdoor Temperature
+    indoor_humidity:
+      name: Indoor Humidity
+    outdoor_humidity:
+      name: Outdoor Humidity
+    power:
+      name: Power Consumption
+    valid_frames:
+      name: Valid Status Frames
+    rejected_frames:
+      name: Rejected Frames
+
+binary_sensor:
+  - platform: panasonic_erv
+    panasonic_erv_id: erv
+    connected:
+      name: ERV Connected
+    fault:
+      name: ERV Fault
+    control_ready:
+      name: ERV Control Ready
+
+text_sensor:
+  - platform: panasonic_erv
+    panasonic_erv_id: erv
+    fault_code:
+      name: ERV Fault Code
+    command_result:
+      name: ERV Command Result

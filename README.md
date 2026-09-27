@@ -154,6 +154,9 @@ status timeout. The ESP's API connection alone is not an ERV connection check.
 
 ## Documentation
 
+- [Device Builder adoption](docs/ADOPTION.md): discovery, personal YAML and
+  migration from the earlier replay firmware.
+
 - [Wiring and printable schematic](docs/WIRING.md): voltages, resistor loading,
   configurable pins, installation checks and original-controller recovery.
 - [Configuration reference](docs/CONFIGURATION.md): every component option,
