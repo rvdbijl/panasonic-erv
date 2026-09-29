@@ -1,0 +1,226 @@
+# Attic-ERV: ESP32-S3 with 16 MB flash, CP2102 USB, and onboard RGB status LED.
+# Enter Wi-Fi privately using USB Improv or the setup hotspot.
+# After adoption, use this complete YAML in Device Builder to retain LED behavior.
+# This board labels its LED RGB@IO48. See docs/ATTIC-ERV.md for setup and adoption.
+substitutions:
+  device_name: attic-erv
+  friendly_name: Attic-ERV
+  erv_rx_pin: GPIO16
+  erv_tx_pin: GPIO17
+  status_led_pin: GPIO48
+
+esphome:
+  name: ${device_name}
+  friendly_name: ${friendly_name}
+  min_version: 2026.9.0
+  project:
+    name: rvdbijl.panasonic-erv
+    version: "0.1.1"
+
+esp32:
+  board: esp32-s3-devkitc-1
+  flash_size: 16MB
+  flash_mode: dio
+  framework:
+    type: esp-idf
+
+external_components:
+  - source: github://rvdbijl/panasonic-erv@v0.1.0
+    components: [panasonic_erv]
+
+logger:
+  hardware_uart: UART0  # CP2102 USB bridge; separate from the ERV UART.
+  baud_rate: 115200
+  level: INFO
+
+# The adoption firmware has no API password/key; Device Builder can add an
+# individual encryption key when taking control. Web controls have no login.
+api:
+  reboot_timeout: 0s
+
+ota:
+  - platform: esphome
+    allow_partition_access: false
+
+# Device Builder supplies the owner's Wi-Fi configuration when adopting.
+# A provisioned device can also use credentials stored by ESPHome.
+wifi:
+  id: erv_wifi
+  ap:
+    ssid: Attic-ERV Setup
+  reboot_timeout: 0s
+
+dashboard_import:
+  package_import_url: github://rvdbijl/panasonic-erv/examples/panasonic-erv-adopt.yaml@v0.1.1
+  import_full_config: false
+
+web_server:
+  port: 80
+  version: 3
+
+uart:
+  id: erv_uart
+  tx_pin:
+    number: ${erv_tx_pin}
+    inverted: true
+  rx_pin:
+    number: ${erv_rx_pin}
+    inverted: true
+  baud_rate: 4800
+  data_bits: 8
+  parity: EVEN
+  stop_bits: 1
+  rx_buffer_size: 512
+  rx_full_threshold: 1
+  rx_timeout: 3
+
+panasonic_erv:
+  id: erv
+  uart_id: erv_uart
+  poll_interval: 1s
+  status_timeout: 10s
+  command_timeout: 8s
+  rx_pull_down: true  # Matches the documented 2.2k/4.7k receive divider.
+
+select:
+  - platform: panasonic_erv
+    panasonic_erv_id: erv
+    mode:
+      name: Mode
+      id: erv_mode
+
+switch:
+  - platform: panasonic_erv
+    panasonic_erv_id: erv
+    power:
+      name: Power
+    boost:
+      name: Boost
+
+number:
+  - platform: panasonic_erv
+    panasonic_erv_id: erv
+    low_sa:
+      name: Low Supply Airflow
+    low_ea:
+      name: Low Exhaust Airflow
+    high_sa:
+      name: High Supply Airflow
+    high_ea:
+      name: High Exhaust Airflow
+    boost_sa:
+      name: Boost Supply Airflow
+    boost_ea:
+      name: Boost Exhaust Airflow
+
+sensor:
+  - platform: panasonic_erv
+    panasonic_erv_id: erv
+    sa_flow:
+      name: Supply Airflow
+    ea_flow:
+      name: Exhaust Airflow
+    indoor_temperature:
+      name: Indoor Temperature
+    outdoor_temperature:
+      name: Outdoor Temperature
+    indoor_humidity:
+      name: Indoor Humidity
+    outdoor_humidity:
+      name: Outdoor Humidity
+    power:
+      name: Power Consumption
+    valid_frames:
+      name: Valid Status Frames
+      on_value:
+        then:
+          - lambda: |-
+              // Diagnostics republish the counter even when no reply arrived.
+              // Pulse only when the valid status count actually advances.
+              static float previous = 0;
+              if (!std::isfinite(x) || x == previous) return;
+              previous = x;
+              if (x > 0 && id(erv_connected).state && !id(erv_fault).state
+                  && !id(led_error_pulse).is_running())
+                id(led_reply_pulse).execute();
+    rejected_frames:
+      name: Rejected Frames
+      on_value:
+        then:
+          - lambda: |-
+              static float previous = 0;
+              if (!std::isfinite(x) || x == previous) return;
+              previous = x;
+              if (x > 0) id(led_error_pulse).execute();
+
+binary_sensor:
+  - platform: panasonic_erv
+    panasonic_erv_id: erv
+    connected:
+      name: ERV Connected
+      id: erv_connected
+    fault:
+      name: ERV Fault
+      id: erv_fault
+    control_ready:
+      name: ERV Control Ready
+
+text_sensor:
+  - platform: panasonic_erv
+    panasonic_erv_id: erv
+    fault_code:
+      name: ERV Fault Code
+    command_result:
+      name: ERV Command Result
+
+# Both provisioning methods store entered Wi-Fi settings on this ESP.
+improv_serial:
+captive_portal:
+
+light:
+  - platform: esp32_rmt_led_strip
+    id: erv_status_led
+    internal: true
+    pin: ${status_led_pin}
+    num_leds: 1
+    chipset: WS2812
+    rgb_order: GRB
+    restore_mode: ALWAYS_OFF
+    default_transition_length: 0s
+
+script:
+  - id: led_reply_pulse
+    mode: restart
+    then:
+      - light.turn_on:
+          id: erv_status_led
+          brightness: 20%
+          red: 0%
+          green: 100%
+          blue: 0%
+      - delay: 80ms
+      - light.turn_off: erv_status_led
+
+  - id: led_error_pulse
+    mode: restart
+    then:
+      # A red error pulse takes priority over a green reply pulse.
+      - script.stop: led_reply_pulse
+      - light.turn_on:
+          id: erv_status_led
+          brightness: 20%
+          red: 100%
+          green: 0%
+          blue: 0%
+      - delay: 250ms
+      - light.turn_off: erv_status_led
+
+interval:
+  - interval: 1s
+    startup_delay: 10s
+    then:
+      - if:
+          condition:
+            lambda: return !id(erv_connected).state || id(erv_fault).state;
+          then:
+            - script.execute: led_error_pulse
